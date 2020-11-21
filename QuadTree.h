@@ -2,7 +2,7 @@
 #define QUADTREE_QUADTREE_H
 
 #include <string>
-#include <vector>
+#include <fstream>
 #include "CImg.h"
 using namespace cimg_library;
 using namespace std;
@@ -27,10 +27,12 @@ CImg<char>  Binarizar(CImg<float> & img, int umbral)
 struct Node {
     int xi, xf, yi, yf;
 
-    char color[4] = {};
+    char color = 100;
     Node* children[4] = {};
 
-    Node(int xi, int xf, int yi, int yf) {
+    Node(){};
+
+	Node(int xi, int xf, int yi, int yf) {
         this->xi = xi;
         this->xf = xf;
         this->yi = yi;
@@ -44,77 +46,83 @@ private:
 public:
     QuadTree():root(0){};
     Node* getRoot() {return root;}
+
+	bool sameColor(int xi, int xf, int yi, int yf, CImg<char>& img) {
+		char pixel = img(xi,yi);
+		for (int i = xi; i <= xf; ++i) {
+			for (int j = yi; j <= yf; ++j) {
+				if (pixel != img(i,j))	return false;
+			}
+		}
+		return true;
+	}
+
     void insert(int xi, int xf, int yi, int yf, CImg<char>& img, Node* &n) {
         n = new Node(xi, xf, yi, yf);
+		if (sameColor(xi, xf, yi, yf, img)) {
+			n->color = img(xi,yi);	
+		} else {
+			insert(xi, (xf+xi)/2, yi, (yf+yi)/2, img, n->children[0]);
+			insert((xf+xi)/2+1, xf, yi, (yf+yi)/2, img, n->children[1]);
+			insert(xi, (xf+xi)/2, (yf+yi)/2+1, yf, img, n->children[2]);
+			insert((xf+xi)/2+1, xf, (yf+yi)/2+1, yf, img, n->children[3]);
+		}
+        
+	}
+	void draw(Node* & node, CImg<char> & N) {
+		if (node->color == 100) {
+			for (int i = 0; i < 4; ++i)
+				draw(node->children[i], N);
+		} else {
+			for (int i = node->xi; i <= node->xf; ++i) {
+		   		for (int j = node->yi; j <= node->yf; ++j)
+					N(i,j) = node->color;
+			}	
+		}
+		
+	}
 
-        char pixel = img(xi,yi);
-        bool c = true;
-        for (int i = xi; i <= xf/2; ++i) { // cuadrante0
-            for (int j = yi; j < yf/2; ++j) {
-                if (pixel != img(i,j)) {
-                    n->color[0] = 100;
-                    insert(xi, xf/2, yi, yf/2, img, n->children[0]);
-                    i = xf/2;
-                    c = false;
-                    break;
-                }
-            }
-        }
-        if (c) n->color[0] = pixel;
-        c = true;
-        pixel = img((xf/2)+1,yi);
-        for (int i = (xf/2)+1; i < xf; ++i) { // cuadrante1
-            for (int j = yi; j <= yf/2; ++j) {
-                if (pixel != img(i,j)) {
-                    n->color[1] = 100;
-                    insert((xf/2)+1, xf, yi, yf/2, img, n->children[1]);
-                    i = xf;
-                    c = false;
-                    break;
-                }
-            }
-        }
-        if (c) n->color[1] = pixel;
-        c = true;
-        pixel = img(xi,yf/2);
-        for (int i = xi; i < xf/2; ++i) { // cuadrante2
-            for (int j = yf/2; j < yf; ++j) {
-                if (pixel != img(i,j)) {
-                    n->color[2] = 100;
-                    insert(xi, xf/2, yf/2, yf, img, n->children[2]);
-                    i = xf/2;
-                    c = false;
-                    break;
-                }
-            }
-        }
-        if (c) n->color[2] = pixel;
-        c = true;
-        pixel = img(xf/2,yf/2);
-        for (int i = xf/2; i < xf; ++i) { // cuadrante3
-            for (int j = yf/2; j < yf; ++j) {
-                if (pixel != img(i,j)) {
-                    n->color[3] = 100;
-                    insert(xf/2, xf, yf/2, yf, img, n->children[3]);
-                    i = xf;
-                    c = false;
-                    break;
-                }
-            }
-        }
-        if (c) n->color[2] = pixel;
-    }
+	void draw() {
+		CImg<char> N(root->xf+1, root->yf+1, 1);
+		draw(root, N);
+		N.display();
+	}
 
     void build(string name) {
-        CImg<float>   A(name);
-        CImg<char>   R = Binarizar(A,40);
-
-
-        insert(0,0, R.width(), R.height(), R, root);
-
-        A.display();
-        R.display();
+        CImg<float> A;
+		A.load(name.c_str());
+       	CImg<char>   R = Binarizar(A,120);
+        insert(0, R.width()-1, 0, R.height()-1, R, root);
     }
+
+	
+	void compress(std::ofstream &file, Node* &n) {
+		file.write((char*)&(*n), sizeof(Node));
+		if (n->color == 100) {
+        	for (int i = 0; i < 4; ++i)
+				compress(file, n->children[i]);	
+        }
+	} 
+
+	void compress(string name) {
+		std::ofstream file(name, std::ios::binary);
+		compress(file, root);		
+	}
+
+	void load(std::ifstream &file, Node* &n) {
+		n = new Node;
+		file.read((char*)n, sizeof(Node));
+	   	if (n->color == 100) {
+			for (int i = 0; i < 4; ++i)
+				load(file, n->children[i]);
+		}
+	}
+
+	void load(string name) {
+		std::ifstream file(name, std::ios::binary);
+		load(file, root);
+	}
+
 
 };
 
