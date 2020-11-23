@@ -5,13 +5,16 @@ int main() {
 	string imagen = "cara.jpg";
 	CImg<float> img;
 	img.load(imagen.c_str());
-	QuadTree qt, nqt;
+	img.display();
+
+	QuadTree qt;
 	qt.build(imagen);
 	qt.draw();
-
 	qt.compress("cara.bin");
-	nqt.load("cara.bin");
-	nqt.draw();
+		
+	QuadTree qt2;
+	qt2.load("cara.bin");
+	qt2.draw();
 	return 0;
 
 }

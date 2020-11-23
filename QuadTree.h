@@ -38,14 +38,34 @@ struct Node {
         this->yi = yi;
         this->yf = yf;
     }
+	friend ostream& operator<<( ostream &, Node* &);
+  	friend istream& operator>>( istream &, Node* &);
 };
+
+ostream& operator<<(ostream& stream, Node* & obj) {
+	stream.write((char*)&obj->xi, sizeof(int));
+    stream.write((char*)&obj->xf, sizeof(int));
+    stream.write((char*)&obj->yi, sizeof(int));
+    stream.write((char*)&obj->yf, sizeof(int));
+    stream.write((char*)&obj->color, sizeof(char));
+
+	return stream;
+}
+
+istream& operator>>(istream& stream, Node* & obj) {
+	stream.read((char*)&obj->xi, sizeof(int));
+	stream.read((char*)&obj->xf, sizeof(int));
+	stream.read((char*)&obj->yi, sizeof(int));
+	stream.read((char*)&obj->yf, sizeof(int));
+	stream.read((char*)&obj->color, sizeof(char));
+	
+	return stream;
+}
+
 
 class QuadTree {
 private:
     Node* root;
-public:
-    QuadTree():root(0){};
-    Node* getRoot() {return root;}
 
 	bool sameColor(int xi, int xf, int yi, int yf, CImg<char>& img) {
 		char pixel = img(xi,yi);
@@ -82,6 +102,27 @@ public:
 		
 	}
 
+	void compress(std::ofstream &file, Node* &n) {
+		file << n;
+		if (n->color == 100) {
+        	for (int i = 0; i < 4; ++i)
+				compress(file, n->children[i]);	
+        }
+	}
+
+	void load(std::ifstream &file, Node* &n) {
+		n = new Node;
+		file >> n;	
+	   	if (n->color == 100) {
+			for (int i = 0; i < 4; ++i)
+				load(file, n->children[i]);
+		}
+	}
+
+public:
+    QuadTree():root(0){};
+    Node* getRoot() {return root;}
+
 	void draw() {
 		CImg<char> N(root->xf+1, root->yf+1, 1);
 		draw(root, N);
@@ -95,28 +136,11 @@ public:
         insert(0, R.width()-1, 0, R.height()-1, R, root);
     }
 
-	
-	void compress(std::ofstream &file, Node* &n) {
-		file.write((char*)&(*n), sizeof(Node));
-		if (n->color == 100) {
-        	for (int i = 0; i < 4; ++i)
-				compress(file, n->children[i]);	
-        }
-	} 
-
 	void compress(string name) {
 		std::ofstream file(name, std::ios::binary);
 		compress(file, root);		
 	}
 
-	void load(std::ifstream &file, Node* &n) {
-		n = new Node;
-		file.read((char*)n, sizeof(Node));
-	   	if (n->color == 100) {
-			for (int i = 0; i < 4; ++i)
-				load(file, n->children[i]);
-		}
-	}
 
 	void load(string name) {
 		std::ifstream file(name, std::ios::binary);
