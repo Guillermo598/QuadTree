@@ -129,10 +129,14 @@ public:
 		N.display();
 	}
 
-    void build(string name) {
-        CImg<float> A;
-		A.load(name.c_str());
-       	CImg<char>   R = Binarizar(A,120);
+    void build(string name, bool bw = 1) {
+        CImg<char> R;
+		if (bw) R.load(name.c_str());
+		else {
+			CImg<float> A;
+			A.load(name.c_str());
+       		R = Binarizar(A, 120);
+		}
         insert(0, R.width()-1, 0, R.height()-1, R, root);
     }
 

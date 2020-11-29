@@ -2,19 +2,20 @@
 #include "QuadTree.h"
 
 int main() {
-	string imagen = "cara.jpg";
-	CImg<float> img;
-	img.load(imagen.c_str());
-	img.display();
+	CImg<char> R;
+	R.load("monalisa.png");
+	R.display();
 
 	QuadTree qt;
-	qt.build(imagen);
+	qt.build("monalisa.png");
 	qt.draw();
-	qt.compress("cara.bin");
-		
+	qt.compress("monalisa.bin");
+
 	QuadTree qt2;
-	qt2.load("cara.bin");
+	qt2.load("monalisa.bin");
 	qt2.draw();
+	
 	return 0;
+
 
 }
